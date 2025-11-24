@@ -151,8 +151,8 @@ export const deleteRmg = asyncHandler(async (req, res, next) => {
 
 
 export const registerHR = asyncHandler(async (req, res, next) => {
-  const { name, email, company } = req.body;
-  if (!name || !email || !company) {
+  const { name, phone, email, company } = req.body;
+  if (!name || !phone || !email || !company) {
     return next(new ErrorResponse('Please provide name, email and company', 400));
   }
  
@@ -162,12 +162,12 @@ export const registerHR = asyncHandler(async (req, res, next) => {
   const password = generatePassword();
 
   try {
-    const user = await User.create({ name, email, password, role: 'HR', company });
+    const user = await User.create({ name, phone, email, password, role: 'HR', company });
 
     await sendEmail({
       to: email,
       subject: 'Your HR account has been created',
-      html: buildCredentialEmail(name, email, password, 'HR'),
+      html: buildCredentialEmail(name, phone, email, password, 'HR'),
     });
 
     res.status(201).json({ success: true, message: 'HR created and email sent', data: { id: user._id, email } });
@@ -177,7 +177,7 @@ export const registerHR = asyncHandler(async (req, res, next) => {
 });
 
 /* Helper to build HTML credential email */
-const buildCredentialEmail = (name, email, password, role) => {
+const buildCredentialEmail = (name, number, email, password, role) => {
   const loginUrl = process.env.FRONTEND_URL || 'https://your-portal.example.com/login';
   const companyLine = `<p style="margin:0">Role: <strong>${role}</strong></p>`;
 
@@ -192,6 +192,10 @@ const buildCredentialEmail = (name, email, password, role) => {
         <tr>
           <td style="padding:8px;border:1px solid #f1f5f9;width:30%">Email</td>
           <td style="padding:8px;border:1px solid #f1f5f9">${email}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border:1px solid #f1f5f9;width:30%">Number</td>
+          <td style="padding:8px;border:1px solid #f1f5f9">${number}</td>
         </tr>
         <tr>
           <td style="padding:8px;border:1px solid #f1f5f9">Password</td>

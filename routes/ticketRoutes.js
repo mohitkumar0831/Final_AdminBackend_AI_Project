@@ -15,14 +15,14 @@ router.post(
 router.get(
     "/",
     protect,
-    authorize("ADMIN"),
+    authorize("Admin"),
     getAllTickets
 );
 
 router.put(
     "/:id",
     protect,
-    authorize("ADMIN"),
+    authorize("Admin"),
     updateTicketStatus
 );
 
