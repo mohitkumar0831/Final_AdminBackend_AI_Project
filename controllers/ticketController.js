@@ -94,3 +94,8 @@ export const updateTicketStatus = asyncHandler(async(req, res, next) => {
         ticket,
     });
 });
+
+// export const getCountOfTicketsByRmg = asyncHandler(async (req, res, next) => {
+//     const count = await Ticket.countDocuments({ raisedByRole: "RMG" });
+//     res.status(200).json({ success: true, count });
+// });
