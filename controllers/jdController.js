@@ -177,6 +177,6 @@ export const getAssignedJDsByRMG = asyncHandler(async (req, res, next) => {
 });
 
 export const getAssignedOffersByRMG = asyncHandler(async (req, res, next) => {
-  const offers = await Offer.find({ assignedTo: req.user._id, status: 'JD created' });
+  const offers = await Offer.find({ assignedTo: req.user._id });
   res.status(200).json({ success: true, count: offers.length, data: offers });
 });
