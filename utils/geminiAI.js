@@ -11,7 +11,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 export const generateJDWithAI = async (offerDetails, additionalDetails) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `You are an expert HR professional and job description writer. Create a professional, comprehensive job description based on the following information:
 
@@ -181,7 +181,7 @@ function sanitizeJSON(str) {
 
 
 export async function extractResumeText(resumeUrl) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const fileBuffer = await downloadFile(resumeUrl);
 
@@ -214,7 +214,7 @@ Return JSON:
 
 
 export async function evaluateResume(jd, candidate, extractedText) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `
 You are a strict senior technical recruiter.
