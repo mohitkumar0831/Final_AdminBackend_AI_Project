@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema(
 
     avatar: { type: String },
 
+    ispasswordchanged: { type: Boolean, default: false },
+
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',
