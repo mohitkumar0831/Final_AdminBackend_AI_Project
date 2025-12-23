@@ -62,6 +62,10 @@ export const changePassword = async (req, res, next) => {
   user.password = newPassword;
   user.resetPasswordOTP = undefined;
   user.resetPasswordOTPExpiry = undefined;
+  if(user.ispasswordChanged === false){
+    user.ispasswordChanged = true;
+  }
+ 
   await user.save();
   res.status(200).json({ message: 'Password changed successfully.' });
 };
