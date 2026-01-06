@@ -6,6 +6,7 @@ import ErrorResponse from "../utils/errorResponse.js"
 import sendEmail from "../utils/sendEmail.js";
 import { ticketCreatedTemplate } from "../utils/emailTemplates/ticketCreatedTemplate.js";
 import { ticketUpdateTemplate } from "../utils/emailTemplates/ticketUpdateTemplate.js";
+import { superAdminBaseUrl } from '../../Multi_tenant_Website_Frontend/src/utils/ApiConstants.jsx';
 
 export const createTicket = asyncHandler(async (req, res, next)=>{
     const {subject, description, priority} = req.body;
@@ -115,7 +116,7 @@ export const raiseTicket = async (req, res) => {
 
     // sending request to superadmin backend
     const response = await axios.post(
-      "http://localhost:5000/api/superadmin/receiveTickets",
+      `${superAdminBaseUrl}/api/superadmin/receiveTickets`,
       {
         adminId: admin._id,
         adminName: admin.name,
@@ -157,7 +158,7 @@ export const replyToTicket = async (req, res) => {
 
     // 2️⃣ Sync reply to superadmin backend
     await axios.post(
-      "http://localhost:5000/api/superadmin/reply-from-admin",
+      `${superAdminBaseUrl}/api/superadmin/reply-from-admin`,
       {
         ticketId,
         reply

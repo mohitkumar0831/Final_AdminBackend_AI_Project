@@ -7,6 +7,7 @@ import { config } from '../config/index.js';
 import Candidate from '../models/candidate.js';
 import axios from "axios";
 import Company from "../models/company.js";
+import { superAdminBaseUrl } from '../../Multi_tenant_Website_Frontend/src/utils/ApiConstants.jsx';
 
 
 // @desc   Register user
@@ -95,7 +96,7 @@ export const syncCompanyFromExternalDB = asyncHandler(async (req, res, next) => 
 
   try {
     // 🔗 External backend URL
-    const EXTERNAL_API = `http://localhost:5000/api/superadmin/companies/${companyId}`;
+    const EXTERNAL_API = `${superAdminBaseUrl}/api/superadmin/companies/${companyId}`;
 
     // 🌐 Fetch company details from other DB
     const response = await axios.get(EXTERNAL_API);
