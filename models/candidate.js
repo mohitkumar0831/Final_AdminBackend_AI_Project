@@ -25,6 +25,8 @@ const candidateSchema = new mongoose.Schema(
     lastlogin: { type: Date },
     isActive: { type: Boolean, default: true },
     hasLoggedIn: { type: Boolean, default: false },
+    resetPasswordOTP: { type: String },
+    resetPasswordOTPExpiry: { type: Number },
   },
   { timestamps: true }
 );

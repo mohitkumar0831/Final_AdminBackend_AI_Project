@@ -12,6 +12,7 @@ import candidateRoutes from './candidateRoutes.js';
 import dashboardRoutes from './dashboardRoutes.js';
 import assesmentRoutes from './assessmentRoutes.js';
 import forgotPasswordRoutes from './forgotPasswordRoutes.js';
+import forgotPasswordCandidateRoutes from './forgotPasswordCandidateRoutes.js';
 
 const router = express.Router();
 
@@ -26,7 +27,9 @@ router.use('/', publicJDRoutes);
 router.use('/candidate', candidateRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/finalise', assesmentRoutes);
+
 router.use('/forgot', forgotPasswordRoutes);
+router.use('/candidate-forgot', forgotPasswordCandidateRoutes);
 
 // add other routes: /users, /jobs, etc.
 
