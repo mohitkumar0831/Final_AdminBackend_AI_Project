@@ -283,12 +283,13 @@ export const getAppliedjd = asyncHandler(async (req, res, next) => {
     // Populate offerId to get jobTitle from Offer model
     const jds = await JD.find({ "appliedCandidates.candidate": candidateId })
       .populate({ path: "offerId", select: "jobTitle" })
-      .select("jobSummary companyName responsibilities requirements benefits additionalNotes appliedCandidates offerId");
-    // Map to include jobTitle from offerId
+      .select("jobSummary companyName responsibilities requirements benefits additionalNotes appliedCandidates offerId createdAt");
+    // Map to include jobTitle from offerId and createdAt
     const result = jds.map(jd => ({
       ...jd.toObject(),
       jobTitle: jd.offerId?.jobTitle || null,
-      jobSummary: jd.jobSummary || null
+      jobSummary: jd.jobSummary || null,
+      createdAt: jd.createdAt
     }));
     res.status(200).json({ success: true, data: result });
   } catch (err) {
