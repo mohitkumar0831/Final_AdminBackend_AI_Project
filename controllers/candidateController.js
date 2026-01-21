@@ -25,6 +25,7 @@ export const updateCandidateProfile = asyncHandler(async (req, res, next) => {
 import Candidate from "../models/candidate.js";
 import sendEmail from '../utils/sendEmail.js';
 import { bulkJDTemplate } from '../utils/emailTemplates/bulkJDTemplate.js';
+import { shortlistedCandidate } from '../utils/emailTemplates/bulkJDInviteTemplate.js';
 /**
  * Send bulk JD invite emails to selected candidates for a new opening
  * Params: jdId (JobDescription id)
@@ -199,6 +200,61 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
       await sendEmail({
         to: candidate.email,
         subject: `New Opening: ${ jd.companyName || jd.jobTitle}`,
+        html
+      });
+      sentCount++;
+    } catch (e) {
+      // Optionally log or collect failed emails
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Bulk JD invites sent to ${sentCount} candidates.`,
+    jdId,
+    sentCount
+  });
+});
+
+
+export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
+  const { jdId } = req.params;
+  const { candidateIds } = req.body;
+  if (!jdId || !Array.isArray(candidateIds) || candidateIds.length === 0) {
+    return next(new errorResponse('JD id and candidateIds are required', 400));
+  }
+
+  // Fetch JD details
+  const jd = await JD.findById(jdId);
+  if (!jd) {
+    return next(new errorResponse('Job Description not found', 404));
+  }
+
+  // Fetch candidates
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  if (!candidates.length) {
+    return next(new errorResponse('No valid candidates found', 404));
+  }
+
+  // Build apply URL (customize as needed)
+  const applyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173/candidateLogin'}`;
+
+  // Get jobTitle with proper fallback
+  const jobTitle = jd.jobTitle || jd.title || jd.jobSummary || 'Job Opening';
+
+  // Send emails
+  let sentCount = 0;
+  for (const candidate of candidates) {
+    const html = shortlistedCandidate(
+      candidate.name,
+      jobTitle,
+      jd.companyName || 'Our Company',
+      applyUrl
+    );
+    try {
+      await sendEmail({
+        to: candidate.email,
+        subject: `Congratulations! Your Examination is Scheduled - ${jobTitle}`,
         html
       });
       sentCount++;
