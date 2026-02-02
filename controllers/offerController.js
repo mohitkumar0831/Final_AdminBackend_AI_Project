@@ -317,5 +317,7 @@ export const deleteOffer = asyncHandler(async (req, res, next) => {
     if (!offer) {
         return next(new ErrorResponse('Offer not found', 404));
     }
-    res.status(200).json({ success: true, message: 'Offer deleted', data: offer });
+    // Delete associated JD when offer is deleted
+    await JobDescription.deleteMany({ offerId: offerId });
+    res.status(200).json({ success: true, message: 'Offer and associated JD deleted', data: offer });
 });

@@ -178,7 +178,7 @@ export const registerHR = asyncHandler(async (req, res, next) => {
 
 /* Helper to build HTML credential email */
 const buildCredentialEmail = (name, number, email, password, role) => {
-  const loginUrl = process.env.FRONTEND_URL || 'https://your-portal.example.com/login';
+  const loginUrl = 'https://recruterai.netfotech.in/login';
   const companyLine = `<p style="margin:0">Role: <strong>${role}</strong></p>`;
 
   return `
