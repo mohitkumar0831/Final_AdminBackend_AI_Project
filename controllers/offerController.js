@@ -68,10 +68,22 @@ export const createOffer = asyncHandler(async(req, res, next) => {
         html
     });
 
+    // Store notification in DB and emit to assigned HR (recruiter)
+    const Notification = (await import('../models/notification.js')).default;
+    const notification = await Notification.create({
+      recipient: hrUser._id,
+      message: `New offer assigned: ${offer.jobTitle}`,
+      link: `/offers/${offer._id}`
+    });
+    const io = req.app.get('io');
+    if (io) {
+      io.to(hrUser._id.toString()).emit('notification', notification);
+    }
+
     res.status(201).json({
-        success:true,
-        message:"Offer Created and Assigned to HR, HR has Been Notified Via Email.",
-        offer,
+      success:true,
+      message:"Offer Created and Assigned to HR, HR has Been Notified Via Email and Notification.",
+      offer,
     });
 });
 
@@ -297,7 +309,24 @@ export const assignOfferToHr = asyncHandler(async (req, res, next) => {
     offer.assignedTo = hrId;
     await offer.save();
 
-    res.status(200).json({ success: true, message: 'Offer assigned to HR', data: offer });
+    // Emit notification to HR and RMG
+    const io = req.app.get('io');
+    if (io) {
+      // Notify HR
+      io.to(hrUser._id.toString()).emit('notification', {
+        message: `You have been assigned a new offer: ${offer.jobTitle}`,
+        link: `/offers/${offer._id}`,
+        createdAt: new Date(),
+      });
+      // Notify RMG (creator)
+      io.to(offer.createdBy.toString()).emit('notification', {
+        message: `Offer assigned to recruiter: ${hrUser.name}`,
+        link: `/offers/${offer._id}`,
+        createdAt: new Date(),
+      });
+    }
+
+    res.status(200).json({ success: true, message: 'Offer assigned to HR and notifications sent', data: offer });
 });
 
 export const updateOffer = asyncHandler(async (req, res, next) => {
