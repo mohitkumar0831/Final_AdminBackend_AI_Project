@@ -127,7 +127,7 @@ export const applyJob = asyncHandler(async (req, res, next) => {
     email,
     phone,
     reallocate: reallocate === "yes" || reallocate === true,
-    status: "pending",
+    status: "applied",
   });
 
   await jd.save();
@@ -196,9 +196,7 @@ export const getCandidateById = asyncHandler(async (req, res, next) => {
 export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
   const { jdId } = req.params;
   const { candidateIds, startDate = '', startTime = '', endDate = '', endTime = '' } = req.body;
-  if (!jdId || !Array.isArray(candidateIds) || candidateIds.length === 0) {
-    return next(new errorResponse('JD id and candidateIds are required', 400));
-  }
+  if (!jdId) return next(new errorResponse('JD id is required', 400));
 
   // Fetch JD details
   const jd = await JD.findById(jdId);
@@ -206,8 +204,25 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
     return next(new errorResponse('Job Description not found', 404));
   }
 
-  // Fetch candidates
-  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  // Determine candidates to invite.
+  let selectedCandidateIds = [];
+  if (Array.isArray(candidateIds) && candidateIds.length > 0) {
+    selectedCandidateIds = candidateIds;
+  } else {
+    // Auto-select candidates who have status 'applied' or legacy 'pending' and
+    // who applied after the last invite (if lastInviteAt exists).
+    const eligibleStatuses = ['applied', 'pending'];
+    selectedCandidateIds = jd.appliedCandidates
+      .filter(ac => eligibleStatuses.includes(ac.status) && (!jd.lastInviteAt || (ac.appliedAt && ac.appliedAt > jd.lastInviteAt)))
+      .map(ac => ac.candidate);
+  }
+
+  if (!selectedCandidateIds || selectedCandidateIds.length === 0) {
+    return next(new errorResponse('No eligible candidates found for invite', 400));
+  }
+
+  // Fetch candidate documents
+  const candidates = await Candidate.find({ _id: { $in: selectedCandidateIds } });
   if (!candidates.length) {
     return next(new errorResponse('No valid candidates found', 404));
   }
@@ -231,10 +246,20 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
         html
       });
       sentCount++;
+      // mark appliedCandidate entry as link_sent and set invitedAt
+      const idx = jd.appliedCandidates.findIndex(ac => ac.candidate && ac.candidate.toString() === candidate._id.toString());
+      if (idx !== -1) {
+        jd.appliedCandidates[idx].status = 'link_sent';
+        jd.appliedCandidates[idx].invitedAt = new Date();
+      }
     } catch (e) {
       // Optionally log or collect failed emails
     }
   }
+
+  // update JD lastInviteAt and save
+  jd.lastInviteAt = new Date();
+  await jd.save();
 
   res.status(200).json({
     success: true,
@@ -248,9 +273,7 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
 export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
   const { jdId } = req.params;
   const { candidateIds, startDate = '', startTime = '', endDate = '', endTime = '' } = req.body;
-  if (!jdId || !Array.isArray(candidateIds) || candidateIds.length === 0) {
-    return next(new errorResponse('JD id and candidateIds are required', 400));
-  }
+  if (!jdId) return next(new errorResponse('JD id is required', 400));
 
   // Fetch JD details
   const jd = await JD.findById(jdId);
@@ -258,8 +281,23 @@ export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
     return next(new errorResponse('Job Description not found', 404));
   }
 
-  // Fetch candidates
-  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  // Determine candidates to invite. If candidateIds provided use them,
+  // otherwise pick shortlisted/applied recent ones similar to bulk invite logic.
+  let selectedCandidateIds = [];
+  if (Array.isArray(candidateIds) && candidateIds.length > 0) {
+    selectedCandidateIds = candidateIds;
+  } else {
+    const eligibleStatuses = ['applied', 'pending'];
+    selectedCandidateIds = jd.appliedCandidates
+      .filter(ac => eligibleStatuses.includes(ac.status) && (!jd.lastInviteAt || (ac.appliedAt && ac.appliedAt > jd.lastInviteAt)))
+      .map(ac => ac.candidate);
+  }
+
+  if (!selectedCandidateIds || selectedCandidateIds.length === 0) {
+    return next(new errorResponse('No eligible candidates found for invite', 400));
+  }
+
+  const candidates = await Candidate.find({ _id: { $in: selectedCandidateIds } });
   if (!candidates.length) {
     return next(new errorResponse('No valid candidates found', 404));
   }
@@ -290,10 +328,20 @@ export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
         html
       });
       sentCount++;
+      // mark appliedCandidate entry as link_sent and set invitedAt
+      const idx = jd.appliedCandidates.findIndex(ac => ac.candidate && ac.candidate.toString() === candidate._id.toString());
+      if (idx !== -1) {
+        jd.appliedCandidates[idx].status = 'link_sent';
+        jd.appliedCandidates[idx].invitedAt = new Date();
+      }
     } catch (e) {
       // Optionally log or collect failed emails
     }
   }
+
+  // update JD lastInviteAt and save
+  jd.lastInviteAt = new Date();
+  await jd.save();
 
   res.status(200).json({
     success: true,

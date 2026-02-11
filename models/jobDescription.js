@@ -104,9 +104,18 @@ const jdSchema = new mongoose.Schema(
         phone: String,
         reallocate: { type: Boolean, default: false },
         appliedAt: { type: Date, default: Date.now },
-        status: { type: String, enum: ["pending", "filtered", "unfiltered"], default: "pending" },
+        // status values: pending/filtered/unfiltered (legacy),
+        // applied: newly applied and eligible for invite,
+        // link_sent: invite/link already sent,
+        // completed: candidate completed the exam
+        status: {
+          type: String,
+          enum: ["pending", "filtered", "unfiltered", "applied", "link_sent", "completed"],
+          default: "applied",
+        },
         aiScore: Number,
         aiExplanation: String,
+        invitedAt: { type: Date, default: null },
       },
     ],
     filteredCandidates: [
@@ -123,6 +132,8 @@ const jdSchema = new mongoose.Schema(
         aiExplanation: String,
       },
     ],
+    // timestamp when invites were last sent for this JD
+    lastInviteAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

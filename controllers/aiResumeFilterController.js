@@ -24,7 +24,8 @@ export const filterResumes = asyncHandler(async (req, res) => {
   if (!jd) return res.status(404).json({ success: false, message: "JD not found" });
 
   const pendingCandidates = jd.appliedCandidates.filter((c) => {
-    const isPending = c.status === "pending" || !c.status;
+    // treat legacy 'pending' and new 'applied' as pending for filtering
+    const isPending = c.status === "pending" || c.status === "applied" || !c.status;
     
     if (candidateIds && candidateIds.length > 0) {
       return isPending && candidateIds.includes(c.candidate?._id.toString());
