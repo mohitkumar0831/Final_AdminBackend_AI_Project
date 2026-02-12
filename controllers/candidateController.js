@@ -206,25 +206,81 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
 
   // Determine candidates to invite.
   let selectedCandidateIds = [];
+  let alreadyInvitedCount = 0;
+  let completedTestCount = 0;
+  
   if (Array.isArray(candidateIds) && candidateIds.length > 0) {
-    selectedCandidateIds = candidateIds;
+    // Filter provided candidateIds to exclude those with mailStatus "sent" or testCompletedAt
+    selectedCandidateIds = candidateIds.filter(cId => {
+      const appliedCandidate = jd.appliedCandidates.find(ac => 
+        ac.candidate && ac.candidate.toString() === cId.toString()
+      );
+      
+      // Track why candidates are excluded
+      if (appliedCandidate) {
+        if (appliedCandidate.mailStatus === 'sent') {
+          alreadyInvitedCount++;
+          return false;
+        }
+        if (appliedCandidate.testCompletedAt) {
+          completedTestCount++;
+          return false;
+        }
+      }
+      
+      // Include only if mailStatus is NOT "sent" AND testCompletedAt is NOT set
+      return appliedCandidate && appliedCandidate.mailStatus !== 'sent' && !appliedCandidate.testCompletedAt;
+    });
   } else {
     // Auto-select candidates who have status 'applied' or legacy 'pending' and
-    // who applied after the last invite (if lastInviteAt exists).
+    // who applied after the last invite (if lastInviteAt exists) AND have not received invite yet
     const eligibleStatuses = ['applied', 'pending'];
     selectedCandidateIds = jd.appliedCandidates
-      .filter(ac => eligibleStatuses.includes(ac.status) && (!jd.lastInviteAt || (ac.appliedAt && ac.appliedAt > jd.lastInviteAt)))
+      .filter(ac => {
+        if (!eligibleStatuses.includes(ac.status) || (jd.lastInviteAt && ac.appliedAt && ac.appliedAt <= jd.lastInviteAt)) {
+          return false;
+        }
+        
+        if (ac.mailStatus === 'sent') {
+          alreadyInvitedCount++;
+          return false;
+        }
+        if (ac.testCompletedAt) {
+          completedTestCount++;
+          return false;
+        }
+        
+        return true;
+      })
       .map(ac => ac.candidate);
   }
 
+  // If no eligible candidates, return a friendly message instead of error
   if (!selectedCandidateIds || selectedCandidateIds.length === 0) {
-    return next(new errorResponse('No eligible candidates found for invite', 400));
+    return res.status(200).json({
+      success: true,
+      message: 'No new candidates to send job opening invite',
+      jdId,
+      sentCount: 0,
+      alreadyInvitedCount,
+      completedTestCount,
+      detail: alreadyInvitedCount > 0 || completedTestCount > 0 
+        ? `All candidates have either already received an invite (${alreadyInvitedCount}) or completed the test (${completedTestCount}).`
+        : 'All eligible candidates have already been processed.'
+    });
   }
 
   // Fetch candidate documents
   const candidates = await Candidate.find({ _id: { $in: selectedCandidateIds } });
   if (!candidates.length) {
-    return next(new errorResponse('No valid candidates found', 404));
+    return res.status(200).json({
+      success: true,
+      message: 'No valid candidates found',
+      jdId,
+      sentCount: 0,
+      alreadyInvitedCount,
+      completedTestCount
+    });
   }
 
   // Build apply URL (customize as needed)
@@ -246,14 +302,20 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
         html
       });
       sentCount++;
-      // mark appliedCandidate entry as link_sent and set invitedAt
+      // mark appliedCandidate entry as link_sent, set invitedAt, mailStatus, and mailSentAt
       const idx = jd.appliedCandidates.findIndex(ac => ac.candidate && ac.candidate.toString() === candidate._id.toString());
       if (idx !== -1) {
         jd.appliedCandidates[idx].status = 'link_sent';
         jd.appliedCandidates[idx].invitedAt = new Date();
+        jd.appliedCandidates[idx].mailStatus = 'sent';
+        jd.appliedCandidates[idx].mailSentAt = new Date();
       }
     } catch (e) {
       // Optionally log or collect failed emails
+      const idx = jd.appliedCandidates.findIndex(ac => ac.candidate && ac.candidate.toString() === candidate._id.toString());
+      if (idx !== -1) {
+        jd.appliedCandidates[idx].mailStatus = 'failed';
+      }
     }
   }
 
@@ -265,7 +327,9 @@ export const sendBulkJDInvite = asyncHandler(async (req, res, next) => {
     success: true,
     message: `Bulk JD invites sent to ${sentCount} candidates.`,
     jdId,
-    sentCount
+    sentCount,
+    alreadyInvitedCount,
+    completedTestCount
   });
 });
 
@@ -284,22 +348,78 @@ export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
   // Determine candidates to invite. If candidateIds provided use them,
   // otherwise pick shortlisted/applied recent ones similar to bulk invite logic.
   let selectedCandidateIds = [];
+  let alreadyInvitedCount = 0;
+  let completedTestCount = 0;
+  
   if (Array.isArray(candidateIds) && candidateIds.length > 0) {
-    selectedCandidateIds = candidateIds;
+    // Filter provided candidateIds to exclude those with mailStatus "sent" or testCompletedAt
+    selectedCandidateIds = candidateIds.filter(cId => {
+      const appliedCandidate = jd.appliedCandidates.find(ac => 
+        ac.candidate && ac.candidate.toString() === cId.toString()
+      );
+      
+      // Track why candidates are excluded
+      if (appliedCandidate) {
+        if (appliedCandidate.mailStatus === 'sent') {
+          alreadyInvitedCount++;
+          return false;
+        }
+        if (appliedCandidate.testCompletedAt) {
+          completedTestCount++;
+          return false;
+        }
+      }
+      
+      // Include only if mailStatus is NOT "sent" AND testCompletedAt is NOT set
+      return appliedCandidate && appliedCandidate.mailStatus !== 'sent' && !appliedCandidate.testCompletedAt;
+    });
   } else {
     const eligibleStatuses = ['applied', 'pending'];
     selectedCandidateIds = jd.appliedCandidates
-      .filter(ac => eligibleStatuses.includes(ac.status) && (!jd.lastInviteAt || (ac.appliedAt && ac.appliedAt > jd.lastInviteAt)))
+      .filter(ac => {
+        if (!eligibleStatuses.includes(ac.status) || (jd.lastInviteAt && ac.appliedAt && ac.appliedAt <= jd.lastInviteAt)) {
+          return false;
+        }
+        
+        if (ac.mailStatus === 'sent') {
+          alreadyInvitedCount++;
+          return false;
+        }
+        if (ac.testCompletedAt) {
+          completedTestCount++;
+          return false;
+        }
+        
+        return true;
+      })
       .map(ac => ac.candidate);
   }
 
+  // If no eligible candidates, return a friendly message instead of error
   if (!selectedCandidateIds || selectedCandidateIds.length === 0) {
-    return next(new errorResponse('No eligible candidates found for invite', 400));
+    return res.status(200).json({
+      success: true,
+      message: 'No new candidates to send test invite',
+      jdId,
+      sentCount: 0,
+      alreadyInvitedCount,
+      completedTestCount,
+      detail: alreadyInvitedCount > 0 || completedTestCount > 0 
+        ? `All candidates have either already received an invite (${alreadyInvitedCount}) or completed the test (${completedTestCount}).`
+        : 'All eligible candidates have already been processed.'
+    });
   }
 
   const candidates = await Candidate.find({ _id: { $in: selectedCandidateIds } });
   if (!candidates.length) {
-    return next(new errorResponse('No valid candidates found', 404));
+    return res.status(200).json({
+      success: true,
+      message: 'No valid candidates found',
+      jdId,
+      sentCount: 0,
+      alreadyInvitedCount,
+      completedTestCount
+    });
   }
 
   // Build apply URL (customize as needed)
@@ -328,14 +448,20 @@ export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
         html
       });
       sentCount++;
-      // mark appliedCandidate entry as link_sent and set invitedAt
+      // mark appliedCandidate entry as link_sent, set invitedAt, mailStatus, and mailSentAt
       const idx = jd.appliedCandidates.findIndex(ac => ac.candidate && ac.candidate.toString() === candidate._id.toString());
       if (idx !== -1) {
         jd.appliedCandidates[idx].status = 'link_sent';
         jd.appliedCandidates[idx].invitedAt = new Date();
+        jd.appliedCandidates[idx].mailStatus = 'sent';
+        jd.appliedCandidates[idx].mailSentAt = new Date();
       }
     } catch (e) {
       // Optionally log or collect failed emails
+      const idx = jd.appliedCandidates.findIndex(ac => ac.candidate && ac.candidate.toString() === candidate._id.toString());
+      if (idx !== -1) {
+        jd.appliedCandidates[idx].mailStatus = 'failed';
+      }
     }
   }
 
@@ -345,9 +471,11 @@ export const sendInviteToShortlisted = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: `Bulk JD invites sent to ${sentCount} candidates.`,
+    message: `Test invites sent to ${sentCount} candidate(s).`,
     jdId,
-    sentCount
+    sentCount,
+    alreadyInvitedCount,
+    completedTestCount
   });
 });
 
@@ -505,6 +633,54 @@ export const getCandidateResume = asyncHandler(async (req, res, next) => {
 //     );
 //   }
 // });
+export const markTestCompleted = asyncHandler(async (req, res, next) => {
+  const { jdId } = req.params;
+  const { candidateId, email } = req.body;
+
+  if (!jdId) {
+    return next(new errorResponse('JD id is required', 400));
+  }
+
+  if (!candidateId && !email) {
+    return next(new errorResponse('Either candidateId or email is required', 400));
+  }
+
+  // Fetch JD
+  const jd = await JD.findById(jdId);
+  if (!jd) {
+    return next(new errorResponse('Job Description not found', 404));
+  }
+
+  // Find the candidate in appliedCandidates
+  let candidateIndex = -1;
+  if (candidateId) {
+    candidateIndex = jd.appliedCandidates.findIndex(
+      ac => ac.candidate && ac.candidate.toString() === candidateId
+    );
+  } else if (email) {
+    candidateIndex = jd.appliedCandidates.findIndex(
+      ac => ac.email === email
+    );
+  }
+
+  if (candidateIndex === -1) {
+    return next(new errorResponse('Candidate not found in this job application', 404));
+  }
+
+  // Update testCompletedAt and status to completed
+  jd.appliedCandidates[candidateIndex].testCompletedAt = new Date();
+  jd.appliedCandidates[candidateIndex].status = 'completed';
+
+  await jd.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Test marked as completed',
+    jdId,
+    candidateId: jd.appliedCandidates[candidateIndex].candidate,
+  });
+});
+
 // Apply for a job (JD)
 // export const applyJob = asyncHandler(async (req, res, next) => {
 //   const { jdId } = req.params;

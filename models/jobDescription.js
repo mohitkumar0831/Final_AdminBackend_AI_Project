@@ -116,6 +116,16 @@ const jdSchema = new mongoose.Schema(
         aiScore: Number,
         aiExplanation: String,
         invitedAt: { type: Date, default: null },
+        // Mail status tracking to prevent duplicate sends
+        mailStatus: {
+          type: String,
+          enum: ["not_sent", "sent", "failed", "bounced"],
+          default: "not_sent",
+        },
+        // Timestamp when invite email was sent
+        mailSentAt: { type: Date, default: null },
+        // Timestamp when candidate completed the test
+        testCompletedAt: { type: Date, default: null },
       },
     ],
     filteredCandidates: [

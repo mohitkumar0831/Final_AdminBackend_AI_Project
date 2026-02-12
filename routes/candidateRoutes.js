@@ -1,7 +1,7 @@
 import { getCandidateProfile, updateCandidateProfile } from "../controllers/candidateController.js";
 // Candidate profile routes
 import express from "express";
-import {getCandidateById, sendBulkJDInvite, registerCandidate, loginCandidate, applyJob, getAppliedJobs, getCandidateJdCounts, showlatestFiveJdsForCandidate, getAppliedjd, getCandidateResume, sendInviteToShortlisted} from "../controllers/candidateController.js";
+import {getCandidateById, sendBulkJDInvite, registerCandidate, loginCandidate, applyJob, getAppliedJobs, getCandidateJdCounts, showlatestFiveJdsForCandidate, getAppliedjd, getCandidateResume, sendInviteToShortlisted, markTestCompleted} from "../controllers/candidateController.js";
 // import { registerCandidate, loginCandidate, applyJob, getAppliedJobs} from "../controllers/candidateController.js";
 import { protect } from "../middlewares/auth.js";
 import { protectCandidate } from "../middlewares/authCandidate.js";
@@ -21,6 +21,7 @@ router.get("/latest-five-jds", protectCandidate, showlatestFiveJdsForCandidate);
 router.get("/applied-jds", protectCandidate, getAppliedjd);
 router.post("/send-email/:jdId", protect, sendBulkJDInvite);
 router.post("/send-email-shortlisted/:jdId", protect, sendInviteToShortlisted);
+router.post("/mark-test-completed/:jdId", markTestCompleted);
 // Get candidate by id (protected)
 
 router.get("/resume", protectCandidate, getCandidateResume);

@@ -248,9 +248,30 @@ export const getFilteredCandidatesForJD = asyncHandler(async (req, res, next) =>
 
 export const getAllCandidatesAppliedToJD = asyncHandler(async (req, res, next) => {
   const { jdId } = req.params;
+  const { includeInvited } = req.query; // Optional query param to include already invited candidates
+  
   const jd = await JD.findById(jdId).populate('appliedCandidates.candidate', 'name email phone resume');
   if (!jd) return next(new ErrorResponse("JD not found", 404));
-  res.status(200).json({ success: true, count: jd.appliedCandidates.length, data: jd.appliedCandidates });
+  
+  // Filter candidates based on mail status and test completion
+  let filteredCandidates = jd.appliedCandidates;
+  
+  if (!includeInvited || includeInvited === 'false') {
+    // Exclude candidates who:
+    // 1. Have mailStatus === 'sent' (already received invite)
+    // 2. Have testCompletedAt (already completed the test)
+    filteredCandidates = jd.appliedCandidates.filter(ac => {
+      return ac.mailStatus !== 'sent' && !ac.testCompletedAt;
+    });
+  }
+  
+  res.status(200).json({ 
+    success: true, 
+    count: filteredCandidates.length, 
+    totalCount: jd.appliedCandidates.length,
+    message: `Showing ${filteredCandidates.length} of ${jd.appliedCandidates.length} candidates`,
+    data: filteredCandidates 
+  });
 });
 
 export const getAssignedJDsByRMG = asyncHandler(async (req, res, next) => {
