@@ -532,3 +532,47 @@ export const getLatestFilteredUnfilteredCandidates = asyncHandler(async (req, re
     return next(new ErrorResponse(err.message || 'Failed to fetch candidates', 500));
   }
 });
+
+export const getAllFilteredUnfilteredCandidates = asyncHandler(async (req, res, next) => {
+  try {
+    const pipeline = [
+      { $unwind: '$appliedCandidates' },
+      { $match: { 'appliedCandidates.status': { $in: ['filtered', 'unfiltered'] } } },
+      { $sort: { 'appliedCandidates.appliedAt': -1 } },
+
+      {
+        $lookup: {
+          from: 'offers',
+          localField: 'offerId',
+          foreignField: '_id',
+          as: 'offer'
+        }
+      },
+      { $unwind: { path: '$offer', preserveNullAndEmptyArrays: true } },
+
+      {
+        $project: {
+          _id: 0,
+          name: '$appliedCandidates.name',
+          phone: '$appliedCandidates.phone',
+          status: '$appliedCandidates.status',
+          appliedAt: '$appliedCandidates.appliedAt',
+          candidateId: '$appliedCandidates.candidate',
+          jobTitle: '$offer.jobTitle',
+          skills: '$offer.skills'
+        }
+      }
+    ];
+
+    const results = await JobDescription.aggregate(pipeline);
+
+    res.status(200).json({
+      success: true,
+      count: results.length,
+      data: results
+    });
+
+  } catch (err) {
+    return next(new ErrorResponse(err.message || 'Failed to fetch candidates', 500));
+  }
+});

@@ -168,7 +168,7 @@ Only return the summary text.
       skills,
       location,      
       Qualification,
-      employmentType,
+      employmentType, 
       salaryRange,
       dueDate: dueDate ? new Date(dueDate) : null,
       fullJD,
